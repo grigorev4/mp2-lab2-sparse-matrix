@@ -3,6 +3,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <random>
+#include <cmath>
+
+using namespace std;
 
 template <typename ValT = double>
 class CSR_matrix {
@@ -204,16 +207,170 @@ public:
 
     // TODO:
 	// сложение матриц в формате CSR
-    CSR_matrix operator+(const CSR_matrix& other) const;
+    CSR_matrix operator+(const CSR_matrix& other) const {
+        if (n_rows != other.n_rows || n_cols != other.n_cols) {
+            throw invalid_argument("Matrixi ne sovpadayut");
+        }
+
+        vector<size_t> res_row_index;
+        vector<size_t> res_cols;
+        vector<ValT> res_vals;
+        res_row_index.push_back(0);
+
+        for (size_t i = 0; i < n_rows; ++i) {
+            size_t pA = RowIndex[i];
+            size_t endA = RowIndex[i + 1];
+            size_t pB = other.RowIndex[i];
+            size_t endB = other.RowIndex[i + 1];
+
+            while (pA < endA && pB < endB) {
+                if (Col[pA] < other.Col[pB]) {
+                    res_cols.push_back(Col[pA]);
+                    res_vals.push_back(Val[pA]);
+                    pA++;
+                }
+                else if (Col[pA] > other.Col[pB]) {
+                    res_cols.push_back(other.Col[pB]);
+                    res_vals.push_back(other.Val[pB]);
+                    pB++;
+                }
+                else {
+                    ValT sum = Val[pA] + other.Val[pB];
+                    if (abs(sum) > 1e-9) {
+                        res_cols.push_back(Col[pA]);
+                        res_vals.push_back(sum);
+                    }
+                    pA++;
+                    pB++;
+                }
+            }
+
+            while (pA < endA) {
+                res_cols.push_back(Col[pA]);
+                res_vals.push_back(Val[pA]);
+                pA++;
+            }
+
+            while (pB < endB) {
+                res_cols.push_back(other.Col[pB]);
+                res_vals.push_back(other.Val[pB]);
+                pB++;
+            }
+
+            res_row_index.push_back(res_cols.size());
+        }
+
+        CSR_matrix result(n_rows, n_cols, res_cols.size());
+        result.set_from_vectors(res_cols, res_row_index, res_vals);
+        return result;
+    }
+
 	// умножение матрицы на вектор
-    std::vector<ValT> operator*(const std::vector<ValT>& x) const;
+    std::vector<ValT> operator*(const std::vector<ValT>& x) const {
+        if (n_cols != x.size()) {
+            throw invalid_argument("Ne sovpadayut razmeri");
+        }
+        vector<ValT> y(n_rows, 0);
+
+        for (size_t i = 0; i < n_rows; ++i) {
+            ValT sum = 0;
+            for (size_t j = RowIndex[i]; j < RowIndex[i + 1]; ++j) {
+                sum += Val[j] * x[Col[j]];
+            }
+            y[i] = sum;
+        }
+
+        return y;
+    }
 	// транспонирование матрицы в формате CSR
-	CSR_matrix transpose() const;
+    CSR_matrix transpose() const {
+        CSR_matrix result(n_cols, n_rows, nz);
+        
+        if (nz == 0) {
+            return result;
+        }
+        vector<size_t> col_counts(n_cols, 0);
+        for (size_t i = 0; i < nz; i++) {
+            col_counts[Col [i] ]++;
+        }
+
+        result.RowIndex[0] = 0;
+        for (size_t i = 0; i < n_cols; i++) {
+            result.RowIndex[i + 1] = result.RowIndex[i] + col_counts[i];
+        }
+
+        vector<size_t> current_pos(result.RowIndex, result.RowIndex + n_cols);
+        for (size_t i = 0; i < n_rows; i++) {
+            for (size_t j = RowIndex[i]; j < RowIndex[i + 1]; ++j) {
+                size_t old_col = Col[j];
+                ValT val = Val[j];
+                size_t new_row = old_col;
+                size_t dest_idx = current_pos[new_row]++;
+                result.Col[dest_idx] = i;
+                result.Val[dest_idx] = val;
+            }
+        }
+        return result;
+    }
 	// конвертер из координатного формата в формат CSR
-	CSR_matrix from_coo(size_t n_rows, size_t n_cols, const std::vector<size_t>& rows, const std::vector<size_t>& cols, const std::vector<ValT>& vals);
+    static CSR_matrix from_coo(size_t n_rows, size_t n_cols, const std::vector<size_t>& rows, const std::vector<size_t>& cols, const std::vector<ValT>& vals) {
+        if (rows.size() != cols.size() || rows.size() != vals.size()) {
+            throw invalid_argument("raznaya dlina");
+        }
+
+        size_t nz = rows.size();
+        CSR_matrix result(n_rows, n_cols, nz);
+        if (nz == 0) {
+            return result;
+        }
+
+        vector<size_t> row_counts(n_rows, 0);
+        for (size_t k = 0; k < nz; ++k) {
+            row_counts[rows[k]]++;
+        }
+
+        result.RowIndex[0] = 0;
+        for (size_t i = 0; i < n_rows; ++i) {
+            result.RowIndex[i + 1] = result.RowIndex[i] + row_counts[i];
+        }
+
+        vector<size_t> current_pos(result.RowIndex, result.RowIndex + n_rows);
+        for (size_t k = 0; k < nz; ++k) {
+            size_t r = rows[k];
+            size_t c = cols[k];
+            ValT v = vals[k];
+
+            size_t dest_idx = current_pos[r]++;
+            result.Col[dest_idx] = c;
+            result.Val[dest_idx] = v;
+        }
+
+        return result;
+    }
 	
 	// подумайте, как реализовать корректно для разных типов данных ValT
-    bool operator==(const CSR_matrix& other) const;
+    bool operator==(const CSR_matrix& other) const {
+        if (n_rows != other.n_rows || n_cols != other.n_cols || nz != other.nz)
+            return false;
+
+        for (size_t i = 0; i <= n_rows; i++) {
+            if (RowIndex[i] != other.RowIndex[i])
+                return false;
+        }
+
+        for (size_t i = 0; i < nz; i++) {
+            if (Col[i] != other.Col[i])
+                return false;
+        }
+
+        for (size_t i = 0; i < nz; i++) {
+            if (Val[i] != other.Val[i]) {
+                if (abs(Val[i] - other.Val[i]) > 1e-9)
+                    return false;
+            }
+        }
+        return true;
+    }
 };
 
 
