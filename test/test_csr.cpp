@@ -61,7 +61,7 @@ TEST(TestMatrix, slozhenie_matric)
 }
 
 // 6. Умножение матрицы на вектор
-Test(TestMatrix, umnozhenie_na_vektor)
+TEST(TestMatrix, umnozhenie_na_vektor)
 {
     vector<size_t> rows = { 0, 1 };
     vector<size_t> cols = { 0, 1 };
