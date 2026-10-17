@@ -89,6 +89,28 @@ TEST(TestMatrix, proverka_oshibok)
     EXPECT_THROW(m1 * bad_x, invalid_argument);
 }
 
+//8. Проверка на равенство
+TEST(TestMatrix, proverka_ravenstva)
+{
+    vector<size_t> r = { 0 };
+    vector<size_t> c = { 0 };
+
+    auto m_int1 = CSR_matrix<int>::from_coo(2, 2, r, c, { 10 });
+    auto m_int2 = CSR_matrix<int>::from_coo(2, 2, r, c, { 10 });
+    auto m_int3 = CSR_matrix<int>::from_coo(2, 2, r, c, { 20 });
+
+    EXPECT_TRUE(m_int1 == m_int2); 
+    EXPECT_FALSE(m_int1 == m_int3); 
+
+
+    auto m_d1 = CSR_matrix<double>::from_coo(2, 2, r, c, { 1.0 });
+    auto m_d2 = CSR_matrix<double>::from_coo(2, 2, r, c, { 1.0000000001 });
+    auto m_d3 = CSR_matrix<double>::from_coo(2, 2, r, c, { 2.0 });
+
+    EXPECT_TRUE(m_d1 == m_d2);  
+    EXPECT_FALSE(m_d1 == m_d3);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

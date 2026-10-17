@@ -217,7 +217,7 @@ public:
         vector<ValT> res_vals;
         res_row_index.push_back(0);
 
-        for (size_t i = 0; i < n_rows; ++i) {
+        for (size_t i = 0; i < n_rows; i++) {
             size_t pA = RowIndex[i];
             size_t endA = RowIndex[i + 1];
             size_t pB = other.RowIndex[i];
@@ -272,9 +272,9 @@ public:
         }
         vector<ValT> y(n_rows, 0);
 
-        for (size_t i = 0; i < n_rows; ++i) {
+        for (size_t i = 0; i < n_rows; i++) {
             ValT sum = 0;
-            for (size_t j = RowIndex[i]; j < RowIndex[i + 1]; ++j) {
+            for (size_t j = RowIndex[i]; j < RowIndex[i + 1]; j++) {
                 sum += Val[j] * x[Col[j]];
             }
             y[i] = sum;
@@ -301,7 +301,7 @@ public:
 
         vector<size_t> current_pos(result.RowIndex, result.RowIndex + n_cols);
         for (size_t i = 0; i < n_rows; i++) {
-            for (size_t j = RowIndex[i]; j < RowIndex[i + 1]; ++j) {
+            for (size_t j = RowIndex[i]; j < RowIndex[i + 1]; j++) {
                 size_t old_col = Col[j];
                 ValT val = Val[j];
                 size_t new_row = old_col;
@@ -325,17 +325,17 @@ public:
         }
 
         vector<size_t> row_counts(n_rows, 0);
-        for (size_t k = 0; k < nz; ++k) {
+        for (size_t k = 0; k < nz; k++) {
             row_counts[rows[k]]++;
         }
 
         result.RowIndex[0] = 0;
-        for (size_t i = 0; i < n_rows; ++i) {
+        for (size_t i = 0; i < n_rows; i++) {
             result.RowIndex[i + 1] = result.RowIndex[i] + row_counts[i];
         }
 
         vector<size_t> current_pos(result.RowIndex, result.RowIndex + n_rows);
-        for (size_t k = 0; k < nz; ++k) {
+        for (size_t k = 0; k < nz; k++) {
             size_t r = rows[k];
             size_t c = cols[k];
             ValT v = vals[k];
@@ -364,8 +364,12 @@ public:
         }
 
         for (size_t i = 0; i < nz; i++) {
-            if (Val[i] != other.Val[i]) {
+            if (is_floating_point_v<ValT>) {
                 if (abs(Val[i] - other.Val[i]) > 1e-9)
+                    return false;
+            }
+            else {
+                if (Val[i] != other.Val[i])
                     return false;
             }
         }
